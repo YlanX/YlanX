@@ -28,6 +28,7 @@ CRITICAL_PATTERNS = [
     re.compile(r"ciclic", re.IGNORECASE),
     re.compile(r"lack\s+of\s+space", re.IGNORECASE),
     re.compile(r"insufficient\s+space", re.IGNORECASE),
+    re.compile(r"corrupt", re.IGNORECASE),
 ]
 
 WARNING_PATTERNS = [
@@ -41,6 +42,7 @@ OK_PATTERNS = [
     re.compile(r"verification\s+successful", re.IGNORECASE),
     re.compile(r"backup\s+completed", re.IGNORECASE),
     re.compile(r"backup\s+succeeded", re.IGNORECASE),
+    re.compile(r"backup\s+ok", re.IGNORECASE),
 ]
 
 
@@ -48,28 +50,29 @@ def _match_any(patterns: Iterable[re.Pattern[str]], text: str) -> bool:
     return any(pattern.search(text) for pattern in patterns)
 
 
-def analyze_hqbird(log_text: str) -> List[Finding]:
+def _analyze_lines(source: str, log_text: str, extra_warning: str | None) -> List[Finding]:
     findings: List[Finding] = []
     for line in log_text.splitlines():
         if _match_any(CRITICAL_PATTERNS, line):
-            findings.append(Finding("hqbird", line.strip(), Priority.CRITICAL))
-        elif _match_any(WARNING_PATTERNS, line):
-            findings.append(Finding("hqbird", line.strip(), Priority.WARNING))
-        elif _match_any(OK_PATTERNS, line):
-            findings.append(Finding("hqbird", line.strip(), Priority.OK))
+            findings.append(Finding(source, line.strip(), Priority.CRITICAL))
+            continue
+        if extra_warning and re.search(extra_warning, line, re.IGNORECASE):
+            findings.append(Finding(source, line.strip(), Priority.WARNING))
+            continue
+        if _match_any(WARNING_PATTERNS, line):
+            findings.append(Finding(source, line.strip(), Priority.WARNING))
+            continue
+        if _match_any(OK_PATTERNS, line):
+            findings.append(Finding(source, line.strip(), Priority.OK))
     return findings
+
+
+def analyze_hqbird(log_text: str) -> List[Finding]:
+    return _analyze_lines("hqbird", log_text, extra_warning=None)
 
 
 def analyze_acronis(log_text: str) -> List[Finding]:
-    findings: List[Finding] = []
-    for line in log_text.splitlines():
-        if _match_any(CRITICAL_PATTERNS, line):
-            findings.append(Finding("acronis", line.strip(), Priority.CRITICAL))
-        elif re.search(r"backup\s+failed", line, re.IGNORECASE):
-            findings.append(Finding("acronis", line.strip(), Priority.WARNING))
-        elif _match_any(OK_PATTERNS, line):
-            findings.append(Finding("acronis", line.strip(), Priority.OK))
-    return findings
+    return _analyze_lines("acronis", log_text, extra_warning=r"backup\s+failed")
 
 
 def summarize(findings: Iterable[Finding]) -> str:
@@ -138,7 +141,19 @@ def fetch_imap_messages(
         connection.logout()
 
 
-def main() -> None:
+def _parse_keywords(raw_keywords: str) -> List[str]:
+    return [keyword.strip() for keyword in raw_keywords.split(",") if keyword.strip()]
+
+
+def _ensure_imap_credentials(host: str, user: str, password: str) -> None:
+    if host and user and password:
+        return
+    raise SystemExit(
+        "IMAP credentials missing. Set IMAP_HOST, IMAP_USER, IMAP_PASS or pass via flags."
+    )
+
+
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Analyze HQbird and Acronis backup logs and prioritize issues."
     )
@@ -165,24 +180,27 @@ def main() -> None:
     imap_parser.add_argument("--host", default=os.getenv("IMAP_HOST", ""))
     imap_parser.add_argument("--user", default=os.getenv("IMAP_USER", ""))
     imap_parser.add_argument("--password", default=os.getenv("IMAP_PASS", ""))
+    return parser
 
+
+def main() -> None:
+    parser = _build_parser()
     args = parser.parse_args()
-    keywords = [k.strip() for k in args.keywords.split(",") if k.strip()]
+    keywords = _parse_keywords(args.keywords)
 
     if args.command == "file":
         with open(args.input, "r", encoding="utf-8") as handle:
             data = handle.read()
-        data = filter_lines_by_keywords(data, keywords)
+        filtered = filter_lines_by_keywords(data, keywords)
         findings = (
-            analyze_hqbird(data) if args.source == "hqbird" else analyze_acronis(data)
+            analyze_hqbird(filtered)
+            if args.source == "hqbird"
+            else analyze_acronis(filtered)
         )
         print(summarize(findings))
         return
 
-    if not args.host or not args.user or not args.password:
-        raise SystemExit(
-            "IMAP credentials missing. Set IMAP_HOST, IMAP_USER, IMAP_PASS or pass via flags."
-        )
+    _ensure_imap_credentials(args.host, args.user, args.password)
 
     messages = fetch_imap_messages(
         host=args.host,
@@ -191,9 +209,12 @@ def main() -> None:
         mailbox=args.mailbox,
         limit=args.limit,
     )
-    combined = "\n".join(messages)
-    combined = filter_lines_by_keywords(combined, keywords)
-    findings = analyze_hqbird(combined) if args.source == "hqbird" else analyze_acronis(combined)
+    combined = filter_lines_by_keywords("\n".join(messages), keywords)
+    findings = (
+        analyze_hqbird(combined)
+        if args.source == "hqbird"
+        else analyze_acronis(combined)
+    )
     print(summarize(findings))
 
 

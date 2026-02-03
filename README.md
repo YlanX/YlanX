@@ -31,6 +31,10 @@ export IMAP_PASS="sua-senha-ou-app-password"
 python monitor.py imap --source hqbird --mailbox INBOX --limit 50 --keywords "corrompido,not found,lack of space"
 ```
 
+## Interface web (mockup)
+
+Há um mockup simples em `web/index.html` com um CSS agradável em `web/styles.css` para servir como base visual do futuro painel.
+
 ## Próximos passos sugeridos
 
 - Conectar uma caixa de e-mail para ingestão automática (IMAP/Graph API).

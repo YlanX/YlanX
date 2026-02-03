@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Plenustech Backup Monitor</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <span class="badge">Plenustech</span>
+        <h1>Monitor de Backups</h1>
+        <p>
+          Centralize logs do HQbird e Acronis, priorize incidentes críticos e
+          mantenha o time informado sobre a saúde dos bancos.
+        </p>
+        <div class="hero-actions">
+          <button class="primary">Conectar IMAP</button>
+          <button class="ghost">Enviar log manualmente</button>
+        </div>
+      </header>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Alertas críticos</h2>
+          <p>Corrompido, not found, ciclo ou falta de espaço.</p>
+          <span class="pill critical">CRITICAL</span>
+        </article>
+        <article class="card">
+          <h2>Verificações</h2>
+          <p>Valide backups verificados e incrementais.</p>
+          <span class="pill warning">WARNING</span>
+        </article>
+        <article class="card">
+          <h2>Backup OK</h2>
+          <p>Indicadores rápidos de sucesso.</p>
+          <span class="pill ok">OK</span>
+        </article>
+      </section>
+
+      <section class="card filters">
+        <h2>Palavras-chave</h2>
+        <p>Defina palavras para filtrar os logs recebidos.</p>
+        <div class="input-group">
+          <input
+            type="text"
+            placeholder="corrompido, not found, lack of space"
+          />
+          <button class="primary">Atualizar filtro</button>
+        </div>
+        <div class="tag-list">
+          <span class="tag">corrompido</span>
+          <span class="tag">not found</span>
+          <span class="tag">lack of space</span>
+          <span class="tag">ciclica</span>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
