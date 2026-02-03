@@ -35,6 +35,24 @@ python monitor.py imap --source hqbird --mailbox INBOX --limit 50 --keywords "co
 
 Há um mockup simples em `web/index.html` com um CSS agradável em `web/styles.css` para servir como base visual do futuro painel.
 
+## Gerar executável (.exe)
+
+O monitor já está pronto para empacotamento em Windows usando PyInstaller.
+
+1. Instale as dependências:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Gere o executável:
+
+```bash
+pyinstaller monitor.spec
+```
+
+3. O arquivo final estará em `dist/PlenustechBackupMonitor.exe`.
+
 ## Próximos passos sugeridos
 
 - Conectar uma caixa de e-mail para ingestão automática (IMAP/Graph API).
